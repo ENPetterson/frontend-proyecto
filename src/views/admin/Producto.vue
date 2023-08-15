@@ -55,7 +55,11 @@
           <h5 class="m-0">Gestion Productos</h5>
           <span class="block mt-2 md:mt-0 p-input-icon-left">
             <i class="pi pi-search" />
-            <InputText placeholder="Buscar..." v-model="buscar" @keypress.enter="buscador()"/>
+            <InputText
+              placeholder="Buscar..."
+              v-model="buscar"
+              @keypress.enter="buscador()"
+            />
           </span>
         </div>
       </template>
@@ -116,6 +120,11 @@
       </Column>
       <Column headerStyle="min-width:10rem;">
         <template #body="slotProps">
+          <Button
+            icon="pi pi-image"
+            class="p-button-rounded p-button-info mr-2"
+            @click="imagenProducto(slotProps.data)"
+          />
           <Button
             icon="pi pi-pencil"
             class="p-button-rounded p-button-success mr-2"
@@ -247,6 +256,26 @@
         />
       </template>
     </Dialog>
+
+    <Dialog
+      v-model:visible="productDialogImagen"
+      :style="{ width: '450px' }"
+      header="Imagen"
+      :modal="true"
+      class="p-fluid"
+    >
+    <img :src="`http://127.0.0.1:8000/${product.imagen}`" alt="">
+      <FileUpload
+        customUpload @uploader="subirImagenProducto"
+        :multiple="true"
+        accept="image/*"
+        :maxFileSize="1000000"
+      >
+        <template #empty>
+          <p>Arrastrar y soltar para subir imagenes</p>
+        </template>
+      </FileUpload>
+    </Dialog>
   </div>
 </template>
 
@@ -264,11 +293,12 @@ const dt = ref(null);
 const product = ref({});
 const productDialog = ref(false);
 const deleteProductDialog = ref(false);
+const productDialogImagen = ref(false);
 const submitted = ref(false);
-const buscar = ref("")
+const buscar = ref("");
 
-const loading = ref(false)
-const lazyParams = ref({page: 0}) 
+const loading = ref(false);
+const lazyParams = ref({ page: 0 });
 
 onMounted(() => {
   listarProductos();
@@ -276,20 +306,20 @@ onMounted(() => {
 });
 
 const onPage = (event) => {
-  console.log(event)
+  console.log(event);
   lazyParams.value = event;
-  listarProductos()
-}
+  listarProductos();
+};
 
 async function listarProductos() {
-  loading.value = true
-  console.log("PAGE: ", lazyParams.value.page)
+  loading.value = true;
+  console.log("PAGE: ", lazyParams.value.page);
 
-  let page = lazyParams.value.page+1;
+  let page = lazyParams.value.page + 1;
   let limit = lazyParams.value.rows;
 
   const { data } = await productoService.listar(page, limit, buscar.value);
-  loading.value = false
+  loading.value = false;
   console.log(data);
   productos.value = data.data;
   totalRecords.value = data.total;
@@ -318,8 +348,7 @@ const saveProduct = async () => {
     product.value.precio
   ) {
     if (product.value.id) {
-
-      await productoService.modificar(product.value, product.value.id)
+      await productoService.modificar(product.value, product.value.id);
       listarProductos();
 
       toast.add({
@@ -345,29 +374,59 @@ const saveProduct = async () => {
 };
 
 const editProduct = (editProduct) => {
-    product.value = { ...editProduct };
-    console.log(product);
-    productDialog.value = true;
+  product.value = { ...editProduct };
+  console.log(product);
+  productDialog.value = true;
+};
+
+const imagenProducto = (prod) => {
+  product.value = { ...prod };
+  productDialogImagen.value = true;
 };
 
 const confirmDeleteProduct = (editProduct) => {
-    product.value = editProduct;
-    deleteProductDialog.value = true;
+  product.value = editProduct;
+  deleteProductDialog.value = true;
 };
 
 const deleteProduct = async () => {
+  product.value.id;
+  await productoService.eliminar(product.value.id);
 
-    product.value.id 
-    await productoService.eliminar(product.value.id)
+  listarProductos();
 
-    listarProductos();
-
-    deleteProductDialog.value = false;
-    product.value = {};
-    toast.add({ severity: 'success', summary: 'Exito', detail: 'Producto Eliminado', life: 3000 });
+  deleteProductDialog.value = false;
+  product.value = {};
+  toast.add({
+    severity: "success",
+    summary: "Exito",
+    detail: "Producto Eliminado",
+    life: 3000,
+  });
 };
 
 const buscador = () => {
-  listarProductos()
-}
+  listarProductos();
+};
+
+const subirImagenProducto = async (event) => {
+    const file = event.files[0];
+  
+    let formData = new FormData();
+    formData.append("imagen", file)
+
+    await productoService.actualizarImagen(product.value.id, formData)
+    productDialogImagen.value = false;
+    product.value = {};
+
+    listarProductos();
+
+    toast.add({
+      severity: "success",
+      summary: "Imagen Subida",
+      detail: "Producto Imagen Actualizada",
+      life: 3000,
+    });
+
+};
 </script>
